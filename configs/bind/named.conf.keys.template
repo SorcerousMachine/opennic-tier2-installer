@@ -1,0 +1,17 @@
+// =============================================================================
+// OpenNIC root DNSSEC trust anchor (KSK).
+// =============================================================================
+// Refreshed at install time from `dig DNSKEY . @<opennic-tier1>`.
+// To update after an OpenNIC key rollover, run:
+//     /usr/local/sbin/opennic-update-trust-anchor
+// (see scripts/update-opennic-trust-anchor.sh).
+//
+// Last refreshed: ${TRUST_ANCHOR_REFRESHED_AT}
+// Source: ${TRUST_ANCHOR_SOURCE}
+// Key tag: ${OPENNIC_KSK_TAG}, alg: ${OPENNIC_KSK_ALG}
+//
+// IANA root KSK is handled by BIND's built-in `dnssec-validation auto`.
+
+trust-anchors {
+    . initial-key ${OPENNIC_KSK_FLAGS} ${OPENNIC_KSK_PROTO} ${OPENNIC_KSK_ALG} "${OPENNIC_KSK_KEY}";
+};

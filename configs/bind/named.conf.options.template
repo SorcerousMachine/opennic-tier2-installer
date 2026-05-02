@@ -1,0 +1,62 @@
+// =============================================================================
+// opennic-tier2-installer - BIND9 options
+// =============================================================================
+// Recursive resolver bound to loopback only. Public protocols are terminated
+// by dnsdist; BIND never sees a packet from outside this host.
+
+options {
+    directory "/var/cache/bind";
+
+    // Loopback only. Port 5353 leaves :53 free for dnsdist on the public IPs.
+    listen-on port 5353 { 127.0.0.1; };
+    listen-on-v6 port 5353 { ::1; };
+
+    // Only this host gets to query us. dnsdist on the public IPs forwards in
+    // via 127.0.0.1, which is included in the built-in `localhost` ACL.
+    allow-query     { localhost; };
+    allow-recursion { localhost; };
+    recursion yes;
+
+    // Don't tell anyone we exist (no AXFR, no version banner).
+    allow-transfer  { none; };
+    version "";
+
+    // Several OpenNIC TLDs contain IDN labels with raw UTF-8 bytes that BIND
+    // flags as bad owner names. The zones still load and serve correctly;
+    // suppress the warnings to keep the log honest.
+    check-names secondary ignore;
+
+    // No query logging - the OpenNIC Tier-2 covenant is no-logs.
+    // (Operational events still go to syslog via the default 'default' channel.)
+
+    // DNSSEC: enable validation. `auto` activates the built-in IANA trust
+    // anchor for the IANA root and manages it via RFC 5011 automatically.
+    // The OpenNIC root KSK is added as an additional trust anchor in
+    // /etc/bind/named.conf.keys (see trust-anchors block there).
+    dnssec-validation auto;
+
+    // Tier-2 hygiene: cache caps, RRSIG validation when available,
+    // serve-stale to ride out brief Tier-1 unreachability.
+    max-cache-size 256m;
+    max-cache-ttl 86400;
+    max-ncache-ttl 3600;
+
+    stale-answer-enable yes;
+    stale-answer-ttl    30;
+    stale-cache-enable  yes;
+    max-stale-ttl       86400;
+
+    // Be a polite recursor.
+    minimal-responses yes;
+    qname-minimization relaxed;
+};
+
+// Silence the default channel's query log entirely. Anything BIND would
+// classify as a query log message gets dropped.
+logging {
+    category queries { null; };
+    category query-errors { null; };
+    category resolver { null; };
+    category client { null; };
+    category lame-servers { null; };
+};

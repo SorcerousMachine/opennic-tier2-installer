@@ -1,0 +1,19 @@
+// =============================================================================
+// opennic-tier2-installer - top-level BIND config
+// =============================================================================
+// Replaces Debian's /etc/bind/named.conf. The 'keys' include comes BEFORE
+// 'options' so trust-anchors are defined when options{} is parsed.
+//
+// We deliberately do *not* include named.conf.root-hints: our slaved root
+// from OpenNIC (named.conf.local) takes over root-zone duties.
+
+include "/etc/bind/named.conf.keys";
+include "/etc/bind/named.conf.options";
+include "/etc/bind/named.conf.local";
+include "/etc/bind/rndc.key";
+
+controls {
+    inet 127.0.0.1 port 953
+        allow { 127.0.0.1; }
+        keys { "rndc-key"; };
+};
