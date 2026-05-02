@@ -1,0 +1,69 @@
+# =============================================================================
+# opennic-tier2-installer - operator configuration
+# =============================================================================
+# Copy this file to `install.conf` and edit before running `sudo bash install.sh`.
+# The installer refuses to run if any required value is missing or still set to
+# its placeholder.
+
+# ----- REQUIRED ----------------------------------------------------------------
+
+# Public hostname for this resolver. A and (optionally) AAAA records must
+# already point at the addresses below before you run install.sh.
+RESOLVER_HOSTNAME="dns.example.org"
+
+# Public IPv4 address. Must match what the world sees.
+RESOLVER_IPV4="203.0.113.10"
+
+# Email address used for Let's Encrypt expiry notifications.
+CERTBOT_EMAIL="hostmaster@example.org"
+
+# Operator name displayed on the public info page.
+OPERATOR_NAME="Example Tier-2 Operator"
+
+# Required for the OpenNIC Tier-2 listing. Must be a real, monitored mailbox.
+OPERATOR_ABUSE_EMAIL="abuse@example.org"
+
+# Required for responsible disclosure of security issues.
+OPERATOR_SECURITY_EMAIL="security@example.org"
+
+# ----- OPTIONAL ----------------------------------------------------------------
+
+# Public IPv6 address. Leave blank to disable IPv6 listeners.
+RESOLVER_IPV6=""
+
+# ACME challenge type: "http-01" (default) or "dns-01".
+#   http-01 - simplest; only needs port 80 reachable from the internet during
+#             issuance/renewal. No provider tokens.
+#   dns-01  - works behind firewalls and supports wildcard certs, but needs
+#             API credentials for a supported DNS provider.
+ACME_CHALLENGE="http-01"
+
+# Used only when ACME_CHALLENGE="dns-01". Currently supported: cloudflare.
+# Adding new providers is straightforward; see CONTRIBUTING in the README.
+DNS_PROVIDER="cloudflare"
+
+# Used only when ACME_CHALLENGE="dns-01". For Cloudflare, create a token
+# scoped to Zone:DNS:Edit on the parent zone of $RESOLVER_HOSTNAME.
+DNS_PROVIDER_API_TOKEN=""
+
+# Use Let's Encrypt's staging endpoint instead of production. Set to "true"
+# while iterating on your install (no untrusted-cert warnings will be visible
+# to clients during this phase since none should be using the resolver yet).
+# Switch to "false" before opening to the public.
+LE_STAGING="false"
+
+# DNSCrypt provider name. Defaults to "2.dnscrypt-cert.<RESOLVER_HOSTNAME>".
+# Once published, changing this invalidates every existing client stamp - so
+# pick something you can live with for the long term.
+DNSCRYPT_PROVIDER_NAME=""
+
+# Operator info shown on the public info page (all optional).
+OPERATOR_REGION=""                      # e.g. "US", "EU-Frankfurt", "AS-Tokyo"
+OPERATOR_HOMEPAGE_URL=""                # defaults to https://<RESOLVER_HOSTNAME>/
+
+# Auto-reboot policy for unattended security upgrades:
+#   "now"        - reboot immediately when a kernel/glibc update needs it (default)
+#   "HH:MM"      - schedule reboots at this local time
+#   ""           - disable auto-reboot (operator handles reboots manually)
+# The security/uptime tradeoff is documented in the README.
+AUTO_REBOOT_TIME="now"

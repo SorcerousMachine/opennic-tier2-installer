@@ -1,0 +1,14 @@
+# Operator-specific config (never commit; install.conf.example is the template)
+install.conf
+
+# Editor / OS detritus
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Local notes / scratch
+NOTES.md
+TODO.local.md
+prompt.md
+.claude/
