@@ -81,11 +81,21 @@ _restart_port_80_holders() {
 step_certbot_issue() {
     local le_dir; le_dir="$(_le_live_dir)"
     if [[ -f "$le_dir/fullchain.pem" && -f "$le_dir/privkey.pem" ]]; then
-        # Existing cert. Re-use unless caller forced us to redo this step.
-        # certbot's renew loop handles upcoming expiry; here we just install.
-        local subj; subj="$(openssl x509 -in "$le_dir/fullchain.pem" -noout -subject 2>/dev/null || true)"
-        log_dim "cert already present for $RESOLVER_HOSTNAME ($subj)"
-        return 0
+        # An existing cert needs to match the current LE_STAGING setting.
+        # If the operator flipped staging->production (or vice versa), we
+        # delete the mismatched cert so certbot can re-issue below.
+        local issuer cert_is_staging want_staging
+        issuer="$(openssl x509 -in "$le_dir/fullchain.pem" -noout -issuer 2>/dev/null || true)"
+        cert_is_staging=0; [[ "$issuer" == *STAGING* ]] && cert_is_staging=1
+        want_staging=0;    [[ "$LE_STAGING" == "true" ]]     && want_staging=1
+
+        if (( cert_is_staging == want_staging )); then
+            log_dim "cert already present for $RESOLVER_HOSTNAME ($issuer)"
+            return 0
+        fi
+
+        log_warn "cert is $([[ $cert_is_staging == 1 ]] && echo STAGING || echo PRODUCTION) but install.conf wants $([[ $want_staging == 1 ]] && echo STAGING || echo PRODUCTION); replacing"
+        certbot delete --cert-name "$RESOLVER_HOSTNAME" --non-interactive >> "$LOG_FILE" 2>&1 || true
     fi
 
     local args=(certonly --non-interactive --agree-tos --email "$CERTBOT_EMAIL"

@@ -48,6 +48,20 @@ load_config
 validate_config
 apply_config_defaults
 
+# If the operator flipped LE_STAGING (e.g. true -> false to go live), force
+# the certbot step to re-run so it replaces the staging cert with a real one.
+_le_dir="/etc/letsencrypt/live/$RESOLVER_HOSTNAME"
+if [[ -f "$_le_dir/fullchain.pem" ]]; then
+    _issuer="$(openssl x509 -in "$_le_dir/fullchain.pem" -noout -issuer 2>/dev/null || echo "")"
+    _cert_staging=0; [[ "$_issuer" == *STAGING* ]] && _cert_staging=1
+    _want_staging=0; [[ "$LE_STAGING" == "true" ]]      && _want_staging=1
+    if (( _cert_staging != _want_staging )); then
+        log_warn "cert/LE_STAGING mismatch - clearing certbot step state to re-run"
+        clear_step certbot
+    fi
+fi
+unset _le_dir _issuer _cert_staging _want_staging
+
 run_step preflight             "Preflight: root, distro, config" step_preflight
 run_step system_prep           "System prep: apt update + base packages" step_system_prep
 run_step unattended_upgrades   "Unattended-upgrades policy"      step_unattended_upgrades
