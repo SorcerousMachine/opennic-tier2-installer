@@ -1,0 +1,5 @@
+# Cloudflare API token for ACME DNS-01 challenge.
+# Token must be scoped at minimum to: Zone:DNS:Edit on the parent zone of
+# RESOLVER_HOSTNAME. Create one at https://dash.cloudflare.com/profile/api-tokens.
+# This file is installed mode 0600, owned root:root, by the installer.
+dns_cloudflare_api_token = ${DNS_PROVIDER_API_TOKEN}

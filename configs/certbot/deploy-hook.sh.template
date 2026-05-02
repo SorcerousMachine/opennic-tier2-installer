@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Installed at /etc/letsencrypt/renewal-hooks/deploy/opennic-tier2-installer.sh.
+# Runs after every successful cert issuance/renewal. Re-deploys cert material
+# to nginx and dnsdist so they pick up the new cert without needing a restart.
+#
+# Certbot exports RENEWED_LINEAGE (path to /etc/letsencrypt/live/<name>/) and
+# RENEWED_DOMAINS for our use.
+set -euo pipefail
+
+EXPECTED_DOMAIN="${RESOLVER_HOSTNAME}"
+[[ -n "${RENEWED_LINEAGE:-}" ]] || { echo "deploy hook: no RENEWED_LINEAGE; not a deploy event" >&2; exit 0; }
+
+# Only react to renewals for our resolver hostname.
+case " ${RENEWED_DOMAINS:-} " in
+    *" $EXPECTED_DOMAIN "*) ;;
+    *) exit 0 ;;
+esac
+
+# Mirror cert+key into /etc/dnsdist/tls/ where the dnsdist user can read them.
+install -d -m 0750 -o root -g _dnsdist /etc/dnsdist/tls
+install -m 0640 -o root -g _dnsdist "$RENEWED_LINEAGE/fullchain.pem" /etc/dnsdist/tls/fullchain.pem
+install -m 0640 -o root -g _dnsdist "$RENEWED_LINEAGE/privkey.pem"   /etc/dnsdist/tls/privkey.pem
+
+# Reload services. Reload (not restart) keeps existing connections happy.
+if systemctl is-active --quiet nginx; then
+    systemctl reload nginx || systemctl restart nginx
+fi
+if systemctl is-active --quiet dnsdist; then
+    # dnsdist doesn't support `systemctl reload`; restart to pick up new certs.
+    systemctl restart dnsdist
+fi
+
+logger -t opennic-tier2-installer "deploy-hook: redeployed certs for $EXPECTED_DOMAIN"
+exit 0
