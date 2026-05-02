@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>${RESOLVER_HOSTNAME} &middot; OpenNIC Tier-2 resolver</title>
+<style>
+:root {
+    color-scheme: light dark;
+    --bg: #fafafa;
+    --fg: #1a1a1a;
+    --muted: #666;
+    --border: #e0e0e0;
+    --accent: #2a5d9c;
+    --code-bg: #f0f0f0;
+    --hover-bg: #f5f5f5;
+}
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #1a1a1a;
+        --fg: #e8e8e8;
+        --muted: #999;
+        --border: #333;
+        --accent: #6ba6e8;
+        --code-bg: #2a2a2a;
+        --hover-bg: #252525;
+    }
+}
+html { box-sizing: border-box; }
+*, *::before, *::after { box-sizing: inherit; }
+
+body {
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 2rem 1rem 4rem;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+main {
+    max-width: 56rem;
+    margin: 0 auto;
+}
+header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1.25rem;
+    margin-bottom: 2rem;
+}
+header h1 {
+    margin: 0;
+    font-size: 1.6rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+header p {
+    margin: 0.4rem 0 0;
+    color: var(--muted);
+    font-size: 1.05rem;
+}
+section { margin: 2.4rem 0; }
+section h2 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin: 0 0 0.85rem;
+    letter-spacing: -0.005em;
+}
+p { margin: 0 0 0.85rem; }
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.5rem 0 1rem;
+}
+th, td {
+    text-align: left;
+    padding: 0.55rem 0.7rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+}
+th {
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+}
+tr:hover td { background: var(--hover-bg); }
+td.protocol { font-weight: 600; white-space: nowrap; }
+td.endpoint { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 0.95rem; }
+
+ul.posture {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+ul.posture li {
+    padding: 0.4rem 0;
+    border-bottom: 1px solid var(--border);
+}
+ul.posture li:last-child { border-bottom: none; }
+ul.posture strong { font-weight: 600; }
+
+dl.contacts dt {
+    font-weight: 600;
+    color: var(--muted);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-top: 0.85rem;
+}
+dl.contacts dt:first-child { margin-top: 0; }
+dl.contacts dd {
+    margin: 0.2rem 0 0;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+a { color: var(--accent); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:hover { text-decoration-thickness: 2px; }
+
+footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.85rem;
+    line-height: 1.6;
+}
+footer p { margin: 0.3rem 0; }
+
+code, .stamp {
+    background: var(--code-bg);
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.92em;
+}
+.stamp {
+    display: block;
+    padding: 0.55rem 0.7rem;
+    margin: 0.3rem 0;
+    word-break: break-all;
+    font-size: 0.85em;
+    line-height: 1.4;
+}
+</style>
+</head>
+<body>
+<main>
+    <header>
+        <h1>${RESOLVER_HOSTNAME}</h1>
+        <p>OpenNIC Tier-2 DNS resolver, operated by ${OPERATOR_NAME}${REGION_SUFFIX}.</p>
+    </header>
+
+    <section>
+        <h2>Endpoints</h2>
+        <p>This resolver speaks four DNS transports and validates DNSSEC against both the IANA root and the OpenNIC root.</p>
+        <table>
+            <thead>
+                <tr><th>Protocol</th><th>Endpoint</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="protocol">Do53</td>
+                    <td class="endpoint">${RESOLVER_IPV4}:53${ENDPOINT_IPV6_DO53}</td>
+                    <td>Plain DNS over UDP and TCP. Use only on trusted networks.</td>
+                </tr>
+                <tr>
+                    <td class="protocol">DoT</td>
+                    <td class="endpoint">${RESOLVER_HOSTNAME}:853</td>
+                    <td>DNS over TLS (RFC 7858). Encrypted; recommended.</td>
+                </tr>
+                <tr>
+                    <td class="protocol">DoH</td>
+                    <td class="endpoint">https://${RESOLVER_HOSTNAME}/dns-query</td>
+                    <td>DNS over HTTPS (RFC 8484). Encrypted; works through restrictive firewalls.</td>
+                </tr>
+                <tr>
+                    <td class="protocol">DNSCrypt</td>
+                    <td class="endpoint">${RESOLVER_IPV4}:8443${ENDPOINT_IPV6_DNSCRYPT}</td>
+                    <td>DNSCrypt v2 over UDP and TCP. See server stamps below.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3 style="font-size:1rem; font-weight:600; margin:1rem 0 0.4rem;">DNSCrypt server stamps</h3>
+        <p style="margin:0 0 0.4rem; color:var(--muted); font-size:0.9rem;">Provider name: <code>${DNSCRYPT_PROVIDER_NAME}</code></p>
+        <span class="stamp" id="stamp-ipv4">${DNSCRYPT_STAMP_IPV4}</span>
+${DNSCRYPT_STAMP_IPV6_BLOCK}
+        <h3 style="font-size:1rem; font-weight:600; margin:1rem 0 0.4rem;">DoH server stamp</h3>
+        <span class="stamp">${DOH_STAMP}</span>
+    </section>
+
+    <section>
+        <h2>Operating posture</h2>
+        <ul class="posture">
+            <li><strong>No logs.</strong> Query content, source addresses, and answers are never written to disk. Operational events (startup/shutdown, certificate renewal, package updates) go to syslog only and contain no client data.</li>
+            <li><strong>No filtering.</strong> Queries return whatever the authoritative servers hand us. No NXDOMAIN substitution, ad blocking, or content policy is applied.</li>
+            <li><strong>No upstream forwarding.</strong> Recursion is local. We slave OpenNIC zones from official Tier-1 nameservers and recurse for ICANN names directly.</li>
+            <li><strong>DNSSEC validation.</strong> Both IANA and OpenNIC trust anchors are configured. Validation failures result in SERVFAIL, not silent acceptance.</li>
+            <li><strong>Per-IP rate limiting.</strong> 50 queries per second, averaged, per source address. Enforced at the dnsdist layer.</li>
+            <li><strong>No ANY queries.</strong> ANY requests are refused (RCODE 5) per RFC 8482 guidance, since they enable cheap reflection attacks.</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>About</h2>
+        <p>This resolver is part of <a href="https://www.opennic.org/">OpenNIC</a>, a community-run alternative DNS root. OpenNIC operates its own top-level domains (<code>.dyn</code>, <code>.libre</code>, <code>.geek</code>, etc.) while continuing to resolve names under the IANA / ICANN root. Tier-2 resolvers like this one minimize load on OpenNIC's small infrastructure by pulling zone data via AXFR from Tier-1 nameservers.</p>
+        <p>To explore OpenNIC TLDs from a system pointed at this resolver, try <code>dig grep.geek</code>, <code>dig opennic.glue</code>, or <code>dig sourceforge.libre</code>.</p>
+    </section>
+
+    <section>
+        <h2>Contact</h2>
+        <dl class="contacts">
+            <dt>Abuse</dt>
+            <dd><a href="mailto:${OPERATOR_ABUSE_EMAIL}">${OPERATOR_ABUSE_EMAIL}</a></dd>
+            <dt>Security disclosure</dt>
+            <dd><a href="mailto:${OPERATOR_SECURITY_EMAIL}">${OPERATOR_SECURITY_EMAIL}</a></dd>
+            <dt>Operator</dt>
+            <dd><a href="${OPERATOR_HOMEPAGE_URL}">${OPERATOR_HOMEPAGE_URL}</a></dd>
+        </dl>
+    </section>
+
+    <footer>
+        <p>Built with <a href="https://github.com/SorcerousMachine/opennic-tier2-installer">opennic-tier2-installer</a> &middot; BIND9 + dnsdist + nginx + certbot</p>
+        <p>Generated ${INFOPAGE_GENERATED_AT}</p>
+    </footer>
+</main>
+</body>
+</html>
