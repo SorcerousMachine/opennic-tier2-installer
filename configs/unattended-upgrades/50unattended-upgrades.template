@@ -1,0 +1,27 @@
+// =============================================================================
+// opennic-tier2-installer - unattended-upgrades policy
+// =============================================================================
+// Security-only updates. Reboot policy is set by AUTO_REBOOT_TIME in
+// install.conf - either an immediate reboot ("now"), a scheduled time
+// (e.g. "03:30"), or disabled (empty string).
+
+Unattended-Upgrade::Origins-Pattern {
+    "origin=Debian,codename=${distro_codename},label=Debian-Security";
+    "origin=Debian,codename=${distro_codename}-security,label=Debian-Security";
+};
+
+// Don't auto-update unstable/testing/proposed - we run stable.
+Unattended-Upgrade::Package-Blacklist {
+};
+
+Unattended-Upgrade::DevRelease "false";
+Unattended-Upgrade::Mail "${CERTBOT_EMAIL}";
+Unattended-Upgrade::MailReport "on-change";
+
+// Reboot policy.
+${AUTO_REBOOT_LINE}
+${AUTO_REBOOT_TIME_LINE}
+
+Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+Unattended-Upgrade::Remove-New-Unused-Dependencies "true";
+Unattended-Upgrade::SyslogEnable "true";
