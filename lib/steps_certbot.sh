@@ -142,9 +142,14 @@ step_certbot_issue() {
     fi
     log_ok "issued cert for $RESOLVER_HOSTNAME"
 
-    # Reconfigure renewal to use webroot once nginx is up. Until nginx exists
-    # the standalone method is what we have; the webroot switch happens in
-    # step_certbot_switch_renewal_to_webroot, called after nginx step.
+    # Every fresh issuance writes a renewal config matching whatever method
+    # we just used (standalone, here). Switch it back to webroot immediately,
+    # so the certbot.timer renewal never tries to bind :80 (which nginx owns).
+    # Idempotent; harmless on a fresh install where nginx is not yet up - the
+    # actual /.well-known/acme-challenge/ serving comes online with step_nginx.
+    if [[ "$ACME_CHALLENGE" == "http-01" ]]; then
+        step_certbot_switch_renewal_to_webroot
+    fi
 }
 
 # After nginx is configured to serve /.well-known/acme-challenge/ from
