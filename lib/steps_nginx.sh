@@ -47,7 +47,19 @@ step_nginx_render_server_block() {
 }
 
 step_nginx_render_info_page() {
-    log_info "rendering operator info page"
+    log_info "preparing operator info page"
+
+    # The deployed page is the operator's source of truth. Render the seed
+    # only on a clean install; if the page already exists, leave whatever
+    # the operator has put there alone. Stamps are still regenerated below
+    # so scripts/print-stamps.sh and the install summary stay current.
+    local target="/var/www/$RESOLVER_HOSTNAME/index.html"
+    local skip_render=0
+    if [[ -f "$target" ]]; then
+        log_dim "info page already present at $target; preserving operator edits"
+        log_dim "(delete it and re-run if you want the generic template back)"
+        skip_render=1
+    fi
 
     # Build optional fragments.
     local region_suffix=""
@@ -88,26 +100,29 @@ step_nginx_render_info_page() {
 
     local generated_at; generated_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 
-    local rendered; rendered="$(mktemp)"
-    RESOLVER_HOSTNAME="$RESOLVER_HOSTNAME" \
-    RESOLVER_IPV4="$RESOLVER_IPV4" \
-    OPERATOR_NAME="$OPERATOR_NAME" \
-    OPERATOR_ABUSE_EMAIL="$OPERATOR_ABUSE_EMAIL" \
-    OPERATOR_SECURITY_EMAIL="$OPERATOR_SECURITY_EMAIL" \
-    OPERATOR_HOMEPAGE_URL="$OPERATOR_HOMEPAGE_URL" \
-    DNSCRYPT_PROVIDER_NAME="$DNSCRYPT_PROVIDER_NAME" \
-    DNSCRYPT_STAMP_IPV4="$dc_v4" \
-    DNSCRYPT_STAMP_IPV6_BLOCK="$ipv6_stamp_block" \
-    DOH_STAMP="$doh_stamp" \
-    REGION_SUFFIX="$region_suffix" \
-    ENDPOINT_IPV6_DO53="$endpoint_ipv6_do53" \
-    ENDPOINT_IPV6_DNSCRYPT="$endpoint_ipv6_dnscrypt" \
-    INFOPAGE_GENERATED_AT="$generated_at" \
-        envsubst '${RESOLVER_HOSTNAME} ${RESOLVER_IPV4} ${OPERATOR_NAME} ${OPERATOR_ABUSE_EMAIL} ${OPERATOR_SECURITY_EMAIL} ${OPERATOR_HOMEPAGE_URL} ${DNSCRYPT_PROVIDER_NAME} ${DNSCRYPT_STAMP_IPV4} ${DNSCRYPT_STAMP_IPV6_BLOCK} ${DOH_STAMP} ${REGION_SUFFIX} ${ENDPOINT_IPV6_DO53} ${ENDPOINT_IPV6_DNSCRYPT} ${INFOPAGE_GENERATED_AT}' \
-        < "$REPO_ROOT/web/index.html.template" \
-        > "$rendered"
-    install -m 0644 -o root -g root "$rendered" "/var/www/$RESOLVER_HOSTNAME/index.html"
-    rm -f "$rendered"
+    if (( skip_render == 0 )); then
+        local rendered; rendered="$(mktemp)"
+        RESOLVER_HOSTNAME="$RESOLVER_HOSTNAME" \
+        RESOLVER_IPV4="$RESOLVER_IPV4" \
+        OPERATOR_NAME="$OPERATOR_NAME" \
+        OPERATOR_ABUSE_EMAIL="$OPERATOR_ABUSE_EMAIL" \
+        OPERATOR_SECURITY_EMAIL="$OPERATOR_SECURITY_EMAIL" \
+        OPERATOR_HOMEPAGE_URL="$OPERATOR_HOMEPAGE_URL" \
+        DNSCRYPT_PROVIDER_NAME="$DNSCRYPT_PROVIDER_NAME" \
+        DNSCRYPT_STAMP_IPV4="$dc_v4" \
+        DNSCRYPT_STAMP_IPV6_BLOCK="$ipv6_stamp_block" \
+        DOH_STAMP="$doh_stamp" \
+        REGION_SUFFIX="$region_suffix" \
+        ENDPOINT_IPV6_DO53="$endpoint_ipv6_do53" \
+        ENDPOINT_IPV6_DNSCRYPT="$endpoint_ipv6_dnscrypt" \
+        INFOPAGE_GENERATED_AT="$generated_at" \
+            envsubst '${RESOLVER_HOSTNAME} ${RESOLVER_IPV4} ${OPERATOR_NAME} ${OPERATOR_ABUSE_EMAIL} ${OPERATOR_SECURITY_EMAIL} ${OPERATOR_HOMEPAGE_URL} ${DNSCRYPT_PROVIDER_NAME} ${DNSCRYPT_STAMP_IPV4} ${DNSCRYPT_STAMP_IPV6_BLOCK} ${DOH_STAMP} ${REGION_SUFFIX} ${ENDPOINT_IPV6_DO53} ${ENDPOINT_IPV6_DNSCRYPT} ${INFOPAGE_GENERATED_AT}' \
+            < "$REPO_ROOT/web/index.html.template" \
+            > "$rendered"
+        install -m 0644 -o root -g root "$rendered" "$target"
+        rm -f "$rendered"
+        log_ok "info page rendered at $target"
+    fi
 
     # Save stamps to a file the print-stamps script can read.
     install -d -m 0755 /var/lib/opennic-tier2-install
@@ -119,8 +134,6 @@ step_nginx_render_info_page() {
         printf 'INFO_PAGE_URL=%q\n' "https://${RESOLVER_HOSTNAME}/"
     } > /var/lib/opennic-tier2-install/stamps.env
     chmod 0644 /var/lib/opennic-tier2-install/stamps.env
-
-    log_ok "info page deployed at /var/www/$RESOLVER_HOSTNAME/index.html"
 }
 
 step_nginx_reload() {
