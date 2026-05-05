@@ -56,8 +56,21 @@ newServer({
 
 setServerPolicy(firstAvailable)
 
+-- ---------- packet cache ----------------------------------------------------
+-- Front-edge cache: identical queries don't hit BIND or the wider network.
+-- Reduces backend load and reduces our outbound traffic to OpenNIC Tier-1s
+-- and gtld-servers - good citizen to upstream operators.
+local pc = newPacketCache(10000, {
+    maxTTL = 86400,
+    minTTL = 0,
+    temporaryFailureTTL = 60,  -- briefly cache SERVFAIL so a flapping upstream isn't hammered
+    staleTTL = 60,
+    dontAge = false,
+})
+getPool(""):setCache(pc)
+
 -- ---------- abuse controls ---------------------------------------------------
--- Order matters: ANY/non-RD refusals come first, then per-IP rate limit.
+-- Order matters: ANY/non-RD refusals come first, then rate limits.
 
 -- Refuse RFC 8482-encouraged ANY queries (cheap to amplify).
 addAction(QTypeRule(DNSQType.ANY), RCodeAction(DNSRCode.REFUSED))

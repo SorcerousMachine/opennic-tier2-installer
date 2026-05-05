@@ -60,6 +60,26 @@ options {
     // Be a polite recursor.
     minimal-responses yes;
     qname-minimization relaxed;
+
+    // Response Rate Limiting (RRL). Caps identical valid responses to a
+    // single source to 10 per second (smoothed over a 5s window). Defeats
+    // the classic amplification pattern where an attacker spoofs a victim's
+    // IP and asks our resolver for a large response (e.g. DNSKEY) many
+    // times. `slip 2` truncates every other dropped UDP response, bouncing
+    // legitimate clients into TCP (which proves their source IP) while
+    // denying the spoofer the amplification.
+    rate-limit {
+        responses-per-second 10;
+        nxdomains-per-second 10;
+        errors-per-second 5;
+        window 5;
+        slip 2;
+    };
+
+    // Prefetch popular records before their TTL expires. Reduces upstream
+    // load (less traffic to OpenNIC Tier-1s + gtld-servers) and gives
+    // clients faster responses on TTL boundaries.
+    prefetch 2 9;
 };
 
 // Silence the default channel's query log entirely. Anything BIND would
