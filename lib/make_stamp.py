@@ -83,13 +83,14 @@ def make_doh_stamp(args: argparse.Namespace) -> str:
     body += struct.pack("<Q", flags)
     body += _lp(args.addr.encode("ascii") if args.addr else b"")
     # No certificate hashes - clients use the system trust store. The hash
-    # list is encoded as LP-of-LPs, where multi-hash uses 0x80 high-bit on the
-    # length byte. For a zero-hash list, it's just 0x00.
+    # list is encoded as VLP (vector of LPs), where multi-hash uses 0x80
+    # high-bit on the length byte. An empty hash list is just 0x00.
     body += b"\x00"
     body += _lp(args.hostname.encode("ascii"))
     body += _lp(args.path.encode("ascii"))
-    # No bootstrap IPs.
-    body += b"\x00"
+    # bootstrap_ips is optional and entirely omitted when empty (per spec
+    # `0x02 || props || LP(addr) || VLP(hashes) || LP(host) || LP(path) [|| VLP(bootstrap_ips)]`).
+    # Encoding it as an empty LP/VLP byte trips strict parsers like dnscrypt-proxy.
     return "sdns://" + _b64url_no_pad(body)
 
 
