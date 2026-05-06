@@ -140,6 +140,41 @@ All in `scripts/`. Each is a one-shot, idempotent operation.
 
 ---
 
+## Optional integrations
+
+In `scripts/integrations/`. These are deliberately separate from the main installer — operators run them only if they want the corresponding capability. Each is purely additive: enabling one does not change behavior for clients of the existing transports.
+
+### DNS-over-I2P (DoI)
+
+Exposes this resolver as a hidden service inside the [I2P](https://geti2p.net/) anonymity network, reachable at a persistent `<destination>.b32.i2p` address. Same resolver, same posture (no logs, no filtering, DNSSEC-validating). Just a fifth transport alongside Do53/DoT/DoH/DNSCrypt for users who want their query traffic to traverse I2P rather than clearnet.
+
+**Architecture:**
+
+```
+I2P client → i2pd server tunnel → 127.0.0.1:53 (dnsdist) → 127.0.0.1:5353 (BIND)
+```
+
+i2pd terminates the I2P tunnel locally and forwards both TCP and UDP DNS to dnsdist on loopback, so DoI traffic gets exactly the same handling as any other transport — including the per-IP rate limit (which sees all DoI traffic as `127.0.0.1` and applies the cap collectively, which is the correct behavior for an anonymous transport where per-client identity isn't recoverable).
+
+**Enable:**
+
+```bash
+sudo bash scripts/integrations/enable-doi.sh
+```
+
+The script installs `i2pd`, drops a tunnels config at `/etc/i2pd/tunnels.conf.d/opennic-dns.conf`, starts i2pd, and saves the generated `.b32.i2p` address to `/var/lib/opennic-tier2-install/i2p-address.txt`. First-time tunnel establishment takes 5-15 minutes after i2pd starts while it bootstraps into the I2P network — `sudo journalctl -u i2pd -f` shows progress.
+
+**Operational notes:**
+
+- **Back up `/var/lib/i2pd/opennic-dns.dat`** — that file holds the persistent destination keypair. Same "lose-it-and-the-address-changes" property as the DNSCrypt provider key. Anyone with the old address would silently fail until they rediscover the new one.
+- **Latency over I2P is significantly higher than clearnet** (typically 300ms–2s of extra round-trip). I2P is not a low-latency transport. Clients that care about query speed should use one of the clearnet transports.
+- **What's not done by the script:** publishing the `.b32.i2p` address. That's an editorial decision — add it to your operator info page, mention it in your `dns-operations` listing announcement, and include it in the description field of your OpenNIC Tier-2 listing if you want I2P-aware users to discover it. The script prints client-side tunnel configuration that operators of other i2pd installs can paste straight into their `tunnels.conf` to reach you.
+- **What this script does NOT do:** make `.i2p` names resolvable from a regular browser. That's the inverse direction (DNS resolver as I2P client rather than I2P-accessible service) and is out of scope by design — bridging `.i2p` content out to clearnet defeats the anonymity guarantees the I2P transport provides, and the I2P community generally pushes back on outproxy-style integrations that go the other way.
+
+To unwind: `sudo systemctl disable --now i2pd && sudo apt-get purge i2pd`. The `.dat` keypair file is left in `/var/lib/i2pd/` in case you change your mind; remove it manually if you want a clean slate.
+
+---
+
 ## Maintenance
 
 **Weekly** — nothing. The installer runs `unattended-upgrades` on the systemd timer; certbot runs its own renewal timer. As long as both are healthy you're fine.
