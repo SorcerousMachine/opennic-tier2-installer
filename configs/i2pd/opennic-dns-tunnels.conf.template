@@ -1,0 +1,22 @@
+; opennic-tier2-installer - DNS-over-I2P server tunnels
+; Installed at /etc/i2pd/tunnels.conf.d/opennic-dns.conf by
+; scripts/integrations/enable-doi.sh.
+;
+; Both tunnels share a single destination keypair (opennic-dns.dat) so that
+; clients see one .b32.i2p address regardless of TCP-vs-UDP. DNS predominantly
+; uses UDP but the protocol mandates TCP fallback for large responses, so
+; clients need both available at the same destination.
+
+[opennic-dns-tcp]
+type = server
+host = 127.0.0.1
+port = 53
+keys = opennic-dns.dat
+inbound.length = 2
+outbound.length = 2
+
+[opennic-dns-udp]
+type = udpserver
+host = 127.0.0.1
+port = 53
+keys = opennic-dns.dat

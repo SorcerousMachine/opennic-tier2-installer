@@ -20,6 +20,13 @@ setACL({'0.0.0.0/0', '::/0'})
 -- Do53 (UDP + TCP) on the public IPv4.
 addLocal('${RESOLVER_IPV4}:53')
 ${IPV6_DO53}
+-- Loopback Do53 listener for any same-host integrations that want to use
+-- dnsdist as the entry point (rather than going around it to BIND directly).
+-- Used by scripts/integrations/enable-doi.sh to terminate the DNS-over-I2P
+-- tunnel; harmless on hosts without integrations enabled.
+addLocal('127.0.0.1:53')
+
+
 -- DoT (TLS over TCP) using the Let's Encrypt cert that the deploy hook
 -- mirrors to /etc/dnsdist/tls/.
 addTLSLocal('${RESOLVER_IPV4}:853',
