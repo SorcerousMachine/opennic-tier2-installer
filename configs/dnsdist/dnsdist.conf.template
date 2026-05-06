@@ -87,7 +87,22 @@ addAction(QTypeRule(DNSQType.ANY), RCodeAction(DNSRCode.REFUSED))
 addAction(NotRule(RDRule()), RCodeAction(DNSRCode.REFUSED))
 
 -- Per-IP rate limit: 50 qps averaged, /32 IPv4 / /64 IPv6 buckets.
-addAction(MaxQPSIPRule(50, 32, 64), DropAction())
+-- Loopback is exempt because same-host integrations terminate there
+-- (e.g. scripts/integrations/enable-doi.sh tunnels I2P traffic in via
+-- 127.0.0.1, where a per-/32 cap would pool every I2P user into one
+-- collective bucket and let one client starve the rest). i2pd handles
+-- its own anti-abuse on the I2P side; clearnet sources still get the
+-- per-IP cap.
+local loopback_nmg = newNMG()
+loopback_nmg:addMask("127.0.0.1/32")
+loopback_nmg:addMask("::1/128")
+addAction(
+    AndRule({
+        MaxQPSIPRule(50, 32, 64),
+        NotRule(NetmaskGroupRule(loopback_nmg))
+    }),
+    DropAction()
+)
 
 -- ---------- privacy ----------------------------------------------------------
 -- No query logging is configured. The default `setVerbose(false)` is implicit;

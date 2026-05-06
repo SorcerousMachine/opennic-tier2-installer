@@ -154,7 +154,7 @@ Exposes this resolver as a hidden service inside the [I2P](https://geti2p.net/) 
 I2P client → i2pd server tunnel → 127.0.0.1:53 (dnsdist) → 127.0.0.1:5353 (BIND)
 ```
 
-i2pd terminates the I2P tunnel locally and forwards both TCP and UDP DNS to dnsdist on loopback, so DoI traffic gets exactly the same handling as any other transport — including the per-IP rate limit (which sees all DoI traffic as `127.0.0.1` and applies the cap collectively, which is the correct behavior for an anonymous transport where per-client identity isn't recoverable).
+i2pd terminates the I2P tunnel locally and forwards both TCP and UDP DNS to dnsdist on loopback. Because every DoI client appears to dnsdist as `127.0.0.1`, the per-IP rate limit explicitly **exempts loopback** — otherwise one busy I2P client would starve every other I2P client out of a single shared 50-qps bucket. Anti-abuse for I2P-side traffic is delegated to i2pd's own tunnel-level controls; clearnet sources still get the per-IP cap with their real source addresses.
 
 **Enable:**
 
@@ -168,7 +168,7 @@ The script installs `i2pd`, drops a tunnels config at `/etc/i2pd/tunnels.conf.d/
 
 - **Back up `/var/lib/i2pd/opennic-dns.dat`** — that file holds the persistent destination keypair. Same "lose-it-and-the-address-changes" property as the DNSCrypt provider key. Anyone with the old address would silently fail until they rediscover the new one.
 - **Latency over I2P is significantly higher than clearnet** (typically 300ms–2s of extra round-trip). I2P is not a low-latency transport. Clients that care about query speed should use one of the clearnet transports.
-- **What's not done by the script:** publishing the `.b32.i2p` address. That's an editorial decision — add it to your operator info page, mention it in your `dns-operations` listing announcement, and include it in the description field of your OpenNIC Tier-2 listing if you want I2P-aware users to discover it. The script prints client-side tunnel configuration that operators of other i2pd installs can paste straight into their `tunnels.conf` to reach you.
+- **What's not done by the script:** publishing the `.b32.i2p` address. That's an editorial decision. Reasonable venues if you want discovery: your operator info page, the I2P forum's services subforum, `r/i2p`, the `#i2p` IRC channel on Libera Chat, and the description field of your OpenNIC Tier-2 listing. The script prints client-side tunnel configuration that operators of other i2pd installs can paste straight into their `tunnels.conf` to reach you.
 - **What this script does NOT do:** make `.i2p` names resolvable from a regular browser. That's the inverse direction (DNS resolver as I2P client rather than I2P-accessible service) and is out of scope by design — bridging `.i2p` content out to clearnet defeats the anonymity guarantees the I2P transport provides, and the I2P community generally pushes back on outproxy-style integrations that go the other way.
 
 To unwind: `sudo systemctl disable --now i2pd && sudo apt-get purge i2pd`. The `.dat` keypair file is left in `/var/lib/i2pd/` in case you change your mind; remove it manually if you want a clean slate.

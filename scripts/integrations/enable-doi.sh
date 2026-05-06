@@ -201,8 +201,10 @@ ${C_BOLD}${C_YELLOW}NEXT STEPS:${C_RESET}
 
   1. Back up $I2PD_KEYS_FILE off-host.
   2. Watch ${C_BOLD}sudo journalctl -u i2pd -f${C_RESET} for tunnel-established lines.
-  3. Once tunnels are green, announce on dns-operations or #opennic so
-     users on I2P can discover the new endpoint.
+  3. Once tunnels are green, publish the .b32.i2p where I2P-aware users
+     will find it: your operator info page, the I2P forum services
+     subforum, r/i2p, the #i2p IRC channel on Libera Chat, or the
+     description of your OpenNIC Tier-2 listing.
 
 EOF
 }
