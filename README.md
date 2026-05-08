@@ -250,6 +250,14 @@ The installer never writes secrets to its own log (`/var/log/opennic-tier2-insta
 
 ---
 
+## Disclosure
+
+Built with substantial AI assistance under human direction. See
+[Sorcerous Machine — Practices](https://sorcerousmachine.com/about#practices)
+for the full disclosure on AI usage and commit attribution.
+
+---
+
 ## License
 
 [MIT](LICENSE).
