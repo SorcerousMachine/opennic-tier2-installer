@@ -79,6 +79,7 @@ step_dnsdist_generate_console_key() {
 
 step_dnsdist_render_config() {
     log_info "rendering /etc/dnsdist/dnsdist.conf"
+    install -d -m 0750 -o root -g _dnsdist /etc/dnsdist/conf.d
 
     local console_key=""
     if [[ -s "$DNSDIST_CONSOLE_KEY" ]]; then

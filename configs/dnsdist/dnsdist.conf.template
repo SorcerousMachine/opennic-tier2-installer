@@ -112,3 +112,9 @@ addAction(
 -- Loopback-only console for the operator. The console key is rotated on every
 -- install and is readable only by root in /etc/dnsdist/console.key.
 ${CONSOLE_BLOCK}
+
+-- ---------- conf.d ----------------------------------------------------------
+-- Optional integrations (scripts/integrations/*.sh) drop standalone config
+-- files in /etc/dnsdist/conf.d/ rather than mutating this rendered file.
+-- Empty directory is harmless.
+includeDirectory('/etc/dnsdist/conf.d')
