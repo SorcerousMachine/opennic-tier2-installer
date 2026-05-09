@@ -69,9 +69,9 @@ options {
     // legitimate clients into TCP (which proves their source IP) while
     // denying the spoofer the amplification.
     rate-limit {
-        responses-per-second 10;
-        nxdomains-per-second 10;
-        errors-per-second 5;
+        responses-per-second 50;
+        nxdomains-per-second 30;
+        errors-per-second 10;
         window 5;
         slip 2;
     };
