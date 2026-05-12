@@ -131,15 +131,38 @@ opennic_render_local() {
         done
         printf '};\n\n'
 
-        # Slaved root (contains both ICANN delegations and OpenNIC TLDs).
-        printf 'zone "." {\n'
-        printf '    type secondary;\n'
-        printf '    file "/var/cache/bind/db.root.opennic";\n'
-        printf '    primaries { opennic_tier1; };\n'
-        printf '    notify no;\n'
-        printf '};\n\n'
+        if [[ "${SLAVE_OPENNIC_ROOT:-false}" == "true" ]]; then
+            # Canonical OpenNIC Tier-2 layout: slaved root contains both ICANN
+            # delegations and OpenNIC TLDs. We answer root-level NXDOMAIN
+            # authoritatively (AA flag), which trades the dnscrypt-proxy DNSSEC
+            # check for full alt-root-replica fidelity.
+            printf '// Slaved OpenNIC root.\n'
+            printf 'zone "." {\n'
+            printf '    type secondary;\n'
+            printf '    file "/var/cache/bind/db.root.opennic";\n'
+            printf '    primaries { opennic_tier1; };\n'
+            printf '    notify no;\n'
+            printf '};\n\n'
+        else
+            # Default layout: IANA root hints handle the root, slaved TLDs
+            # handle OpenNIC, a forward zone covers OpenNIC infrastructure
+            # under .glue. Yields AD-flagged NXDOMAIN on nonexistent root
+            # labels because BIND recurses to the (signed) IANA root.
+            printf '// Forward `.glue.` to OpenNIC Tier-1s for infrastructure-only\n'
+            printf '// names (ns0.opennic.glue etc.). Light query volume; not a\n'
+            printf '// general-purpose forwarder.\n'
+            printf 'zone "glue" {\n'
+            printf '    type forward;\n'
+            printf '    forward only;\n'
+            printf '    forwarders {\n'
+            for ip in "${OPENNIC_TIER1_IPS_LIVE[@]}"; do
+                printf '        %s;\n' "$ip"
+            done
+            printf '    };\n'
+            printf '};\n\n'
+        fi
 
-        printf '// OpenNIC TLDs.\n'
+        printf '// OpenNIC TLDs (slaved).\n'
         local tld
         for tld in "${OPENNIC_TLDS[@]}"; do
             printf 'zone "%s" {\n' "$tld"

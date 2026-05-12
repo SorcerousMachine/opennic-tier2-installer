@@ -67,3 +67,17 @@ OPERATOR_HOMEPAGE_URL=""                # defaults to https://<RESOLVER_HOSTNAME
 #   ""           - disable auto-reboot (operator handles reboots manually)
 # The security/uptime tradeoff is documented in the README.
 AUTO_REBOOT_TIME="now"
+
+# Slave the OpenNIC root zone in addition to the 16 OpenNIC TLDs.
+#   "false" (default) - use IANA root hints for non-OpenNIC names. ICANN names
+#                       recurse through the IANA hierarchy and produce real
+#                       AD-flagged DNSSEC responses. OpenNIC TLDs continue to
+#                       be served from local slaved zones. A small forward zone
+#                       for `glue.` covers the OpenNIC infrastructure namespace.
+#   "true"            - canonical OpenNIC Tier-2 setup per the OpenNIC wiki.
+#                       Slaves the entire OpenNIC root in addition to the TLDs,
+#                       giving a complete alt-root replica. Trade-off: BIND
+#                       answers root-level NXDOMAIN authoritatively (AA flag,
+#                       no AD), which breaks dnscrypt-proxy's DNSSEC check.
+# Only set "true" if you specifically want the alt-root-replica property.
+SLAVE_OPENNIC_ROOT="false"

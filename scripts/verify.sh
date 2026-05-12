@@ -54,6 +54,20 @@ else
     _check_fail "ICANN DNSSEC: cloudflare.com missing AD flag"
 fi
 
+# Recursive NXDOMAIN should also come back AD-flagged (proves the resolver
+# isn't authoritative for the root). Only meaningful when SLAVE_OPENNIC_ROOT
+# is false; the slaved-root layout serves these authoritatively without AD.
+if [[ "${SLAVE_OPENNIC_ROOT:-false}" == "false" ]]; then
+    if dig "@$RESOLVER_IPV4" nonexistent-zone.dnscrypt-test. A +time=5 +tries=2 \
+            +adflag | grep -q 'flags:.*ad'; then
+        _check_ok "ICANN DNSSEC NXDOMAIN validates (AD on recursive NXDOMAIN)"
+    else
+        _check_fail "ICANN DNSSEC NXDOMAIN: nonexistent-zone.dnscrypt-test. missing AD flag"
+    fi
+else
+    _check_warn "skipping recursive-NXDOMAIN AD check (SLAVE_OPENNIC_ROOT=true, root served authoritatively)"
+fi
+
 # ---- DoT --------------------------------------------------------------------
 # When LE_STAGING=true, the staging CA isn't in the system trust store, so
 # strict validation fails. Fall back to opportunistic TLS (handshake check

@@ -48,6 +48,10 @@ load_config
 validate_config
 apply_config_defaults
 
+# Detect install.conf changes and clear step state so the changes actually
+# get applied on re-run (rather than skipped via state cache).
+detect_config_change
+
 # If the operator flipped LE_STAGING (e.g. true -> false to go live), force
 # the certbot step to re-run so it replaces the staging cert with a real one.
 _le_dir="/etc/letsencrypt/live/$RESOLVER_HOSTNAME"
