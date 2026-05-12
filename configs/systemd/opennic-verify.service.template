@@ -1,0 +1,10 @@
+[Unit]
+Description=Health check the OpenNIC Tier-2 resolver
+Documentation=https://github.com/SorcerousMachine/opennic-tier2-installer
+After=network-online.target named.service dnsdist.service nginx.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash ${REPO_ROOT}/scripts/verify.sh
+TimeoutStartSec=120
+Nice=10

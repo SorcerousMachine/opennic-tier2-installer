@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh OpenNIC root DNSSEC trust anchor
+Documentation=https://github.com/SorcerousMachine/opennic-tier2-installer
+After=network-online.target named.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash ${REPO_ROOT}/scripts/update-opennic-trust-anchor.sh
+TimeoutStartSec=120
+Nice=10

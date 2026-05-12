@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh OpenNIC TLD list and Tier-1 IPs
+Documentation=https://github.com/SorcerousMachine/opennic-tier2-installer
+After=network-online.target named.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash ${REPO_ROOT}/scripts/refresh-opennic-config.sh
+TimeoutStartSec=300
+Nice=10
