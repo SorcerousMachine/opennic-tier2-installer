@@ -215,6 +215,11 @@ validate_config() {
         rc=1
     fi
 
+    if [[ "${SLAVE_OPENNIC_ROOT:-false}" != "true" && "${SLAVE_OPENNIC_ROOT:-false}" != "false" ]]; then
+        log_error "config: SLAVE_OPENNIC_ROOT must be 'true' or 'false'"
+        rc=1
+    fi
+
     return "$rc"
 }
 
@@ -227,6 +232,7 @@ apply_config_defaults() {
     : "${LE_STAGING:=false}"
     : "${OPERATOR_REGION:=}"
     : "${AUTO_REBOOT_TIME:=now}"
+    : "${SLAVE_OPENNIC_ROOT:=false}"
 
     if [[ -z "${DNSCRYPT_PROVIDER_NAME:-}" ]]; then
         DNSCRYPT_PROVIDER_NAME="2.dnscrypt-cert.${RESOLVER_HOSTNAME}"
@@ -239,7 +245,31 @@ apply_config_defaults() {
     export CERTBOT_EMAIL OPERATOR_NAME OPERATOR_ABUSE_EMAIL OPERATOR_SECURITY_EMAIL
     export OPERATOR_REGION OPERATOR_HOMEPAGE_URL
     export ACME_CHALLENGE DNS_PROVIDER DNS_PROVIDER_API_TOKEN LE_STAGING
-    export DNSCRYPT_PROVIDER_NAME AUTO_REBOOT_TIME
+    export DNSCRYPT_PROVIDER_NAME AUTO_REBOOT_TIME SLAVE_OPENNIC_ROOT
+}
+
+# ---------- install.conf change detection (idempotent re-runs) ----------------
+# Compares the hash of the current install.conf against the one stored from
+# the last successful install.sh run. If they differ, clears step state so
+# all config-rendering steps re-run with the new values. The first run (no
+# stored hash) just records the hash without clearing anything.
+detect_config_change() {
+    ensure_state_dir
+    local hash_file="$STATE_DIR/install-conf.sha256"
+    local current_hash; current_hash="$(sha256sum "$CONFIG_FILE" 2>/dev/null | cut -d' ' -f1)"
+    local stored_hash=""
+    [[ -r "$hash_file" ]] && stored_hash="$(cat "$hash_file" 2>/dev/null)"
+
+    if [[ -n "$stored_hash" && "$current_hash" != "$stored_hash" ]]; then
+        log_warn "install.conf changed since last run; reapplying all steps"
+        if [[ -f "$STATE_FILE" ]]; then
+            cp -p "$STATE_FILE" "$STATE_FILE.bak.$(date +%s)"
+            : > "$STATE_FILE"
+        fi
+    fi
+
+    printf '%s\n' "$current_hash" > "$hash_file"
+    chmod 0640 "$hash_file"
 }
 
 # ---------- templating --------------------------------------------------------

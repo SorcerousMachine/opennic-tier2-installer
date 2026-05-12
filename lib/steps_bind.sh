@@ -37,12 +37,27 @@ step_bind_generate_config() {
     # 4. local (zones)
     opennic_render_local "$stage/named.conf.local"
 
-    # 5. empty root-hints (the slaved root replaces the hint zone)
-    {
-        printf '// Intentionally empty.\n'
-        printf '// opennic-tier2-installer slaves the root zone from OpenNIC instead\n'
-        printf '// of using ICANN root hints; see /etc/bind/named.conf.local.\n'
-    } > "$stage/named.conf.root-hints"
+    # 5. root-hints — empty when slaving the OpenNIC root (that file is the
+    # source of root data), Debian-default IANA hints otherwise (the recursive
+    # path needs them for non-OpenNIC resolution).
+    if [[ "${SLAVE_OPENNIC_ROOT:-false}" == "true" ]]; then
+        {
+            printf '// Intentionally empty.\n'
+            printf '// SLAVE_OPENNIC_ROOT=true: the slaved root zone in\n'
+            printf '// /etc/bind/named.conf.local takes the place of root hints.\n'
+        } > "$stage/named.conf.root-hints"
+    else
+        {
+            printf '// IANA root hints (Debian default).\n'
+            printf '// SLAVE_OPENNIC_ROOT=false: recurse from IANA root for\n'
+            printf '// non-OpenNIC names. OpenNIC TLDs are still served from\n'
+            printf '// local slaves; .glue queries are forwarded.\n'
+            printf 'zone "." {\n'
+            printf '    type hint;\n'
+            printf '    file "/usr/share/dns/root.hints";\n'
+            printf '};\n'
+        } > "$stage/named.conf.root-hints"
+    fi
 
     # Install all four files.
     install -m 0644 -o root -g bind "$stage/named.conf"             /etc/bind/named.conf

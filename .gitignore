@@ -1,6 +1,10 @@
 # Operator-specific config (never commit; install.conf.example is the template)
 install.conf
 
+# Local test artifacts (e.g. dnscrypt-proxy extracted from a tarball for probing)
+linux-x86_64/
+linux-amd64/
+
 # Editor / OS detritus
 *.swp
 *.swo

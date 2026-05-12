@@ -117,6 +117,13 @@ All operator-tunable values live in **`install.conf`** (gitignored). Copy `insta
 | `OPERATOR_REGION`         | *(empty)*                               | Free-text region/datacenter for the info page. |
 | `OPERATOR_HOMEPAGE_URL`   | `https://<RESOLVER_HOSTNAME>/`          | Linked from the info page footer. |
 | `AUTO_REBOOT_TIME`        | `now`                                   | Reboot policy for unattended-upgrades. `now`, `HH:MM`, or empty (disable). |
+| `SLAVE_OPENNIC_ROOT`      | `false`                                 | `true` slaves the OpenNIC root in addition to the 16 TLDs. See below. |
+
+### The DNSSEC-vs-altroot-fidelity tradeoff (`SLAVE_OPENNIC_ROOT`)
+
+The default (`false`) uses IANA root hints. ICANN names recurse through the IANA hierarchy and produce real AD-flagged DNSSEC responses end-to-end, including for NXDOMAIN. OpenNIC TLDs are still served authoritatively from local slaved zones; a small forward zone for `glue.` covers the OpenNIC infrastructure namespace (`ns0.opennic.glue` etc.).
+
+Setting `true` adopts the canonical OpenNIC Tier-2 layout from the OpenNIC wiki: the entire OpenNIC root is slaved in addition to the TLDs, giving a complete alt-root replica. The trade-off is that root-level NXDOMAIN responses are now authoritative (`AA` flag, no `AD`), which is correct per RFC 6840 but breaks `dnscrypt-proxy`'s DNSSEC self-check — it probes `*.dnscrypt-test.` expecting NXDOMAIN with `AD`. Pick `true` only if you specifically want the alt-root-replica property and don't care about a strict DNSSEC check by DNSCrypt clients.
 
 ### The security-vs-uptime auto-reboot tradeoff
 

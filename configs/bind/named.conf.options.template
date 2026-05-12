@@ -35,15 +35,16 @@ options {
     // /etc/bind/named.conf.keys (see trust-anchors block there).
     dnssec-validation auto;
 
-    // OpenNIC's administrative `opennic.glue` namespace contains unsigned
-    // child delegations (e.g. `dns.opennic.glue`) under a signed parent.
-    // The transition is meant to be a clean "secure to insecure" boundary,
-    // but in practice BIND 9.20 fails to accept the NSEC denial of DS at
-    // some points and SERVFAILs queries (notably `dns.opennic.glue SOA`,
-    // which is part of the OpenNIC Tier-2 health check). Marking the whole
-    // subtree as insecure is the standard fix used by other Tier-2 ops.
+    // OpenNIC's `.glue` namespace doesn't validate cleanly via DNSSEC. In
+    // SLAVE_OPENNIC_ROOT=true mode, `dns.opennic.glue` is an unsigned child
+    // of signed `opennic.glue` and BIND mishandles the NSEC denial. In
+    // SLAVE_OPENNIC_ROOT=false mode, the chain from IANA root to `.glue`
+    // doesn't exist at all (IANA has no `.glue` delegation; we forward the
+    // subtree to OpenNIC Tier-1s). Either way, exempting `.glue` and
+    // everything below from validation is correct and safe — we trust the
+    // data via the slave/forwarder transport.
     validate-except {
-        "opennic.glue";
+        "glue";
     };
 
     // Tier-2 hygiene: cache caps, RRSIG validation when available,
