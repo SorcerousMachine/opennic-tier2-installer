@@ -70,6 +70,7 @@ run_step certbot               "Let's Encrypt certificate"        step_certbot
 run_step dnsdist               "dnsdist: Do53 / DoT / DNSCrypt / DoH backend" step_dnsdist
 run_step nginx                 "nginx: TLS, info page, DoH proxy" step_nginx
 run_step certbot_renewal_hook  "Switch LE renewal to webroot mode" step_certbot_switch_renewal_to_webroot
+run_step timers                "Install maintenance timers (refresh, anchor, verify)" step_install_timers
 run_step activate              "Final service activation + listener checks" step_activate_services
 step_verify() {
     # Per spec: don't fail install if external verification fails (network

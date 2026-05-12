@@ -117,6 +117,37 @@ EOF
     log_ok "unattended-upgrades configured (reboot policy: ${AUTO_REBOOT_TIME:-disabled})"
 }
 
+# ---------- maintenance timers -----------------------------------------------
+# Three weekly/quarterly systemd timers that automate the things operators
+# would otherwise need to remember: OpenNIC TLD/Tier-1 refresh, KSK trust
+# anchor refresh, and end-to-end health check. All run as oneshot services
+# whose output goes to the journal; review with journalctl -u <unit>.
+
+step_install_timers() {
+    log_info "installing systemd timers for periodic maintenance"
+    local dst=/etc/systemd/system
+    local unit rendered
+    for unit in opennic-refresh.service opennic-refresh.timer \
+                opennic-anchor.service  opennic-anchor.timer  \
+                opennic-verify.service  opennic-verify.timer; do
+        rendered="$(mktemp)"
+        REPO_ROOT="$REPO_ROOT" envsubst '${REPO_ROOT}' \
+            < "$REPO_ROOT/configs/systemd/$unit.template" > "$rendered"
+        install -m 0644 -o root -g root "$rendered" "$dst/$unit"
+        rm -f "$rendered"
+    done
+
+    systemctl daemon-reload
+    systemctl enable --now opennic-refresh.timer opennic-anchor.timer \
+                          opennic-verify.timer >/dev/null 2>&1
+
+    log_info "scheduled timers:"
+    systemctl list-timers --no-pager 'opennic-*' 2>&1 \
+        | awk 'NR==1 || /opennic-/' | head -5
+
+    log_ok "maintenance timers installed and enabled"
+}
+
 # ---------- service activation ------------------------------------------------
 
 step_activate_services() {
