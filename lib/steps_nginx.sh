@@ -71,6 +71,20 @@ step_nginx_render_info_page() {
         endpoint_ipv6_dnscrypt=" / [${RESOLVER_IPV6}]:8443"
     fi
 
+    # Posture text varies with SLAVE_OPENNIC_ROOT. The two paragraphs that
+    # depend on the architecture choice are computed here and spliced in via
+    # envsubst; everything else in the template stays static.
+    local intro_dnssec posture_forwarding_li posture_dnssec_li
+    if [[ "${SLAVE_OPENNIC_ROOT:-false}" == "true" ]]; then
+        intro_dnssec='This resolver speaks four DNS transports and validates DNSSEC against both the IANA root and the OpenNIC root.'
+        posture_forwarding_li='<li><strong>No upstream forwarding.</strong> Recursion is local. The OpenNIC root and 16 TLDs are slaved from official Tier-1 nameservers; ICANN names are resolved via standard recursion.</li>'
+        posture_dnssec_li='<li><strong>DNSSEC validation.</strong> Both the IANA and OpenNIC root anchors are active trust anchors. Validation failures result in SERVFAIL, not silent acceptance.</li>'
+    else
+        intro_dnssec='This resolver speaks four DNS transports and validates DNSSEC end-to-end for ICANN names.'
+        posture_forwarding_li='<li><strong>No upstream forwarding to public resolvers.</strong> Recursion is local. The 16 OpenNIC TLDs are served from local slaves of official Tier-1 nameservers; ICANN names are resolved via standard recursion.</li>'
+        posture_dnssec_li='<li><strong>DNSSEC validation.</strong> ICANN names are validated end-to-end against the IANA root; the AD flag is set on positive and NXDOMAIN responses. The OpenNIC root anchor is also loaded. Validation failures result in SERVFAIL, not silent acceptance.</li>'
+    fi
+
     # Stamps.
     local provider_pub=/etc/dnsdist/dnscrypt/provider.public
     if [[ ! -r "$provider_pub" ]]; then
@@ -116,7 +130,10 @@ step_nginx_render_info_page() {
         ENDPOINT_IPV6_DO53="$endpoint_ipv6_do53" \
         ENDPOINT_IPV6_DNSCRYPT="$endpoint_ipv6_dnscrypt" \
         INFOPAGE_GENERATED_AT="$generated_at" \
-            envsubst '${RESOLVER_HOSTNAME} ${RESOLVER_IPV4} ${OPERATOR_NAME} ${OPERATOR_ABUSE_EMAIL} ${OPERATOR_SECURITY_EMAIL} ${OPERATOR_HOMEPAGE_URL} ${DNSCRYPT_PROVIDER_NAME} ${DNSCRYPT_STAMP_IPV4} ${DNSCRYPT_STAMP_IPV6_BLOCK} ${DOH_STAMP} ${REGION_SUFFIX} ${ENDPOINT_IPV6_DO53} ${ENDPOINT_IPV6_DNSCRYPT} ${INFOPAGE_GENERATED_AT}' \
+        INTRO_DNSSEC="$intro_dnssec" \
+        POSTURE_FORWARDING_LI="$posture_forwarding_li" \
+        POSTURE_DNSSEC_LI="$posture_dnssec_li" \
+            envsubst '${RESOLVER_HOSTNAME} ${RESOLVER_IPV4} ${OPERATOR_NAME} ${OPERATOR_ABUSE_EMAIL} ${OPERATOR_SECURITY_EMAIL} ${OPERATOR_HOMEPAGE_URL} ${DNSCRYPT_PROVIDER_NAME} ${DNSCRYPT_STAMP_IPV4} ${DNSCRYPT_STAMP_IPV6_BLOCK} ${DOH_STAMP} ${REGION_SUFFIX} ${ENDPOINT_IPV6_DO53} ${ENDPOINT_IPV6_DNSCRYPT} ${INFOPAGE_GENERATED_AT} ${INTRO_DNSSEC} ${POSTURE_FORWARDING_LI} ${POSTURE_DNSSEC_LI}' \
             < "$REPO_ROOT/web/index.html.template" \
             > "$rendered"
         install -m 0644 -o root -g root "$rendered" "$target"
