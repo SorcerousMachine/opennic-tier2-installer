@@ -155,7 +155,7 @@ code, .stamp {
 
     <section>
         <h2>Endpoints</h2>
-        <p>This resolver speaks four DNS transports and validates DNSSEC against both the IANA root and the OpenNIC root.</p>
+        <p>${INTRO_DNSSEC}</p>
         <table>
             <thead>
                 <tr><th>Protocol</th><th>Endpoint</th><th>Notes</th></tr>
@@ -197,8 +197,8 @@ ${DNSCRYPT_STAMP_IPV6_BLOCK}
         <ul class="posture">
             <li><strong>No logs.</strong> Query content, source addresses, and answers are never written to disk. Operational events (startup/shutdown, certificate renewal, package updates) go to syslog only and contain no client data.</li>
             <li><strong>No filtering.</strong> Queries return whatever the authoritative servers hand us. No NXDOMAIN substitution, ad blocking, or content policy is applied.</li>
-            <li><strong>No upstream forwarding.</strong> Recursion is local. We slave OpenNIC zones from official Tier-1 nameservers and recurse for ICANN names directly.</li>
-            <li><strong>DNSSEC validation.</strong> Both IANA and OpenNIC trust anchors are configured. Validation failures result in SERVFAIL, not silent acceptance.</li>
+            ${POSTURE_FORWARDING_LI}
+            ${POSTURE_DNSSEC_LI}
             <li><strong>Per-IP rate limiting.</strong> 50 queries per second, averaged, per source address. Enforced at the dnsdist layer.</li>
             <li><strong>No ANY queries.</strong> ANY requests are refused (RCODE 5) per RFC 8482 guidance, since they enable cheap reflection attacks.</li>
         </ul>
