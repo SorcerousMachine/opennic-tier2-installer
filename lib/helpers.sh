@@ -232,7 +232,7 @@ apply_config_defaults() {
     : "${LE_STAGING:=false}"
     : "${OPERATOR_REGION:=}"
     : "${AUTO_REBOOT_TIME:=now}"
-    : "${SLAVE_OPENNIC_ROOT:=false}"
+    : "${SLAVE_OPENNIC_ROOT:=true}"
 
     if [[ -z "${DNSCRYPT_PROVIDER_NAME:-}" ]]; then
         DNSCRYPT_PROVIDER_NAME="2.dnscrypt-cert.${RESOLVER_HOSTNAME}"

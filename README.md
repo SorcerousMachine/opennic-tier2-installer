@@ -117,13 +117,13 @@ All operator-tunable values live in **`install.conf`** (gitignored). Copy `insta
 | `OPERATOR_REGION`         | *(empty)*                               | Free-text region/datacenter for the info page. |
 | `OPERATOR_HOMEPAGE_URL`   | `https://<RESOLVER_HOSTNAME>/`          | Linked from the info page footer. |
 | `AUTO_REBOOT_TIME`        | `now`                                   | Reboot policy for unattended-upgrades. `now`, `HH:MM`, or empty (disable). |
-| `SLAVE_OPENNIC_ROOT`      | `false`                                 | `true` slaves the OpenNIC root in addition to the 16 TLDs. See below. |
+| `SLAVE_OPENNIC_ROOT`      | `true`                                  | Slave the OpenNIC root in addition to the 16 TLDs. Required for OpenNIC listing. See below. |
 
-### The DNSSEC-vs-altroot-fidelity tradeoff (`SLAVE_OPENNIC_ROOT`)
+### `SLAVE_OPENNIC_ROOT`: required for OpenNIC listing
 
-The default (`false`) uses IANA root hints. ICANN names recurse through the IANA hierarchy and produce real AD-flagged DNSSEC responses end-to-end, including for NXDOMAIN. OpenNIC TLDs are still served authoritatively from local slaved zones; a small forward zone for `glue.` covers the OpenNIC infrastructure namespace (`ns0.opennic.glue` etc.).
+The default (`true`) is the canonical OpenNIC Tier-2 layout from the OpenNIC wiki: the OpenNIC root plus the 16 TLDs are all slaved from official Tier-1 nameservers. The resolver answers `. SOA / . NS / . DNSKEY` authoritatively with OpenNIC root data, which is what OpenNIC's hourly health checker probes for. **If you intend to list the resolver on the public OpenNIC servers page, you must keep this on**, otherwise the member portal will mark you Offline and eventually auto-delist.
 
-Setting `true` adopts the canonical OpenNIC Tier-2 layout from the OpenNIC wiki: the entire OpenNIC root is slaved in addition to the TLDs, giving a complete alt-root replica. The trade-off is that root-level NXDOMAIN responses are now authoritative (`AA` flag, no `AD`), which is correct per RFC 6840 but breaks `dnscrypt-proxy`'s DNSSEC self-check — it probes `*.dnscrypt-test.` expecting NXDOMAIN with `AD`. Pick `true` only if you specifically want the alt-root-replica property and don't care about a strict DNSSEC check by DNSCrypt clients.
+Setting `false` switches to IANA root hints: ICANN names recurse through the IANA hierarchy and produce AD-flagged DNSSEC responses end-to-end including NXDOMAIN; OpenNIC TLDs are still served from local slaves; a small forward zone for `glue.` covers the OpenNIC infrastructure namespace. This mode is only appropriate for **private deployments not listed with OpenNIC** (internal use, lab setups). The trade-off the other way is that root-level NXDOMAIN coming back authoritatively under `true` (`AA` flag, no `AD`) breaks `dnscrypt-proxy`'s `require_dnssec` self-check, so DNSCrypt clients can't enable strict DNSSEC against the resolver. That is the cost of being a real OpenNIC Tier-2; until that incompatibility is resolved upstream, OpenNIC listing wins.
 
 ### The security-vs-uptime auto-reboot tradeoff
 

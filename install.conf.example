@@ -69,15 +69,18 @@ OPERATOR_HOMEPAGE_URL=""                # defaults to https://<RESOLVER_HOSTNAME
 AUTO_REBOOT_TIME="now"
 
 # Slave the OpenNIC root zone in addition to the 16 OpenNIC TLDs.
-#   "false" (default) - use IANA root hints for non-OpenNIC names. ICANN names
-#                       recurse through the IANA hierarchy and produce real
-#                       AD-flagged DNSSEC responses. OpenNIC TLDs continue to
-#                       be served from local slaved zones. A small forward zone
-#                       for `glue.` covers the OpenNIC infrastructure namespace.
-#   "true"            - canonical OpenNIC Tier-2 setup per the OpenNIC wiki.
-#                       Slaves the entire OpenNIC root in addition to the TLDs,
-#                       giving a complete alt-root replica. Trade-off: BIND
-#                       answers root-level NXDOMAIN authoritatively (AA flag,
-#                       no AD), which breaks dnscrypt-proxy's DNSSEC check.
-# Only set "true" if you specifically want the alt-root-replica property.
-SLAVE_OPENNIC_ROOT="false"
+#   "true" (default) - canonical OpenNIC Tier-2 setup. Slaves the OpenNIC root
+#                      plus the 16 TLDs from official Tier-1 nameservers. The
+#                      resolver is authoritative for `. SOA / . NS / . DNSKEY`
+#                      with OpenNIC data, which is what OpenNIC's hourly health
+#                      checker probes for. REQUIRED if you intend to be listed
+#                      on the public OpenNIC servers page; without it the
+#                      member portal marks the resolver Offline.
+#   "false"          - use IANA root hints instead. ICANN names recurse through
+#                      the IANA hierarchy and produce real AD-flagged DNSSEC
+#                      responses (including NXDOMAIN). OpenNIC TLDs are still
+#                      served from local slaves; a small forward zone for
+#                      `glue.` covers the OpenNIC infrastructure namespace.
+#                      Use this mode only if you are NOT listing the resolver
+#                      with OpenNIC (private deployments, internal use).
+SLAVE_OPENNIC_ROOT="true"
