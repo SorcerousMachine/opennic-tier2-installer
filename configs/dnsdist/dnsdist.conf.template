@@ -82,9 +82,15 @@ getPool(""):setCache(pc)
 -- Refuse RFC 8482-encouraged ANY queries (cheap to amplify).
 addAction(QTypeRule(DNSQType.ANY), RCodeAction(DNSRCode.REFUSED))
 
--- Refuse non-recursive queries: we exist to serve recursion to OpenNIC users,
--- not to be a stealth authoritative server for anyone's zone.
-addAction(NotRule(RDRule()), RCodeAction(DNSRCode.REFUSED))
+-- Note: we used to REFUSE queries with rd=0 here as a cheap anti-reflection
+-- measure. That's wrong for an OpenNIC Tier-2: we are authoritative for the
+-- 16 slaved OpenNIC TLDs, and OpenNIC's hourly health checker probes those
+-- zones with rd=0 expecting AA responses. Refusing rd=0 across the board
+-- caused 48 hours of consistent offline status in the OpenNIC member portal
+-- and a delisting risk. BIND's per-zone allow-query and RRL plus our per-IP
+-- rate limit handle the reflection-amplification side; dnsdist now passes
+-- rd=0 through and BIND answers authoritatively for slaved zones (and
+-- returns whatever it has cached otherwise).
 
 -- Per-IP rate limit: 50 qps averaged, /32 IPv4 / /64 IPv6 buckets.
 -- Loopback is exempt because same-host integrations terminate there
