@@ -112,6 +112,11 @@ step_nginx_render_info_page() {
         --path /dns-query \
         --dnssec --no-logs --no-filter)" || return 1
 
+    local doq_stamp
+    doq_stamp="$(python3 "$REPO_ROOT/lib/make_stamp.py" doq \
+        --hostname "$RESOLVER_HOSTNAME" \
+        --dnssec --no-logs --no-filter)" || return 1
+
     local generated_at; generated_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 
     if (( skip_render == 0 )); then
@@ -126,6 +131,7 @@ step_nginx_render_info_page() {
         DNSCRYPT_STAMP_IPV4="$dc_v4" \
         DNSCRYPT_STAMP_IPV6_BLOCK="$ipv6_stamp_block" \
         DOH_STAMP="$doh_stamp" \
+        DOQ_STAMP="$doq_stamp" \
         REGION_SUFFIX="$region_suffix" \
         ENDPOINT_IPV6_DO53="$endpoint_ipv6_do53" \
         ENDPOINT_IPV6_DNSCRYPT="$endpoint_ipv6_dnscrypt" \
@@ -133,7 +139,7 @@ step_nginx_render_info_page() {
         INTRO_DNSSEC="$intro_dnssec" \
         POSTURE_FORWARDING_LI="$posture_forwarding_li" \
         POSTURE_DNSSEC_LI="$posture_dnssec_li" \
-            envsubst '${RESOLVER_HOSTNAME} ${RESOLVER_IPV4} ${OPERATOR_NAME} ${OPERATOR_ABUSE_EMAIL} ${OPERATOR_SECURITY_EMAIL} ${OPERATOR_HOMEPAGE_URL} ${DNSCRYPT_PROVIDER_NAME} ${DNSCRYPT_STAMP_IPV4} ${DNSCRYPT_STAMP_IPV6_BLOCK} ${DOH_STAMP} ${REGION_SUFFIX} ${ENDPOINT_IPV6_DO53} ${ENDPOINT_IPV6_DNSCRYPT} ${INFOPAGE_GENERATED_AT} ${INTRO_DNSSEC} ${POSTURE_FORWARDING_LI} ${POSTURE_DNSSEC_LI}' \
+            envsubst '${RESOLVER_HOSTNAME} ${RESOLVER_IPV4} ${OPERATOR_NAME} ${OPERATOR_ABUSE_EMAIL} ${OPERATOR_SECURITY_EMAIL} ${OPERATOR_HOMEPAGE_URL} ${DNSCRYPT_PROVIDER_NAME} ${DNSCRYPT_STAMP_IPV4} ${DNSCRYPT_STAMP_IPV6_BLOCK} ${DOH_STAMP} ${DOQ_STAMP} ${REGION_SUFFIX} ${ENDPOINT_IPV6_DO53} ${ENDPOINT_IPV6_DNSCRYPT} ${INFOPAGE_GENERATED_AT} ${INTRO_DNSSEC} ${POSTURE_FORWARDING_LI} ${POSTURE_DNSSEC_LI}' \
             < "$REPO_ROOT/web/index.html.template" \
             > "$rendered"
         install -m 0644 -o root -g root "$rendered" "$target"
@@ -148,6 +154,7 @@ step_nginx_render_info_page() {
         printf 'DNSCRYPT_STAMP_IPV4=%q\n' "$dc_v4"
         [[ -n "$dc_v6" ]] && printf 'DNSCRYPT_STAMP_IPV6=%q\n' "$dc_v6"
         printf 'DOH_STAMP=%q\n' "$doh_stamp"
+        printf 'DOQ_STAMP=%q\n' "$doq_stamp"
         printf 'INFO_PAGE_URL=%q\n' "https://${RESOLVER_HOSTNAME}/"
     } > /var/lib/opennic-tier2-install/stamps.env
     chmod 0644 /var/lib/opennic-tier2-install/stamps.env

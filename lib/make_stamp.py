@@ -29,6 +29,7 @@ from pathlib import Path
 
 PROTO_DNSCRYPT = 0x01
 PROTO_DOH = 0x02
+PROTO_DOQ = 0x04
 
 FLAG_DNSSEC = 1 << 0
 FLAG_NO_LOGS = 1 << 1
@@ -94,6 +95,18 @@ def make_doh_stamp(args: argparse.Namespace) -> str:
     return "sdns://" + _b64url_no_pad(body)
 
 
+def make_doq_stamp(args: argparse.Namespace) -> str:
+    flags = _flags_from_args(args)
+    body = b""
+    body += bytes([PROTO_DOQ])
+    body += struct.pack("<Q", flags)
+    body += _lp(args.addr.encode("ascii") if args.addr else b"")
+    # Empty hash list (clients use system trust store).
+    body += b"\x00"
+    body += _lp(args.hostname.encode("ascii"))
+    return "sdns://" + _b64url_no_pad(body)
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="proto", required=True)
@@ -113,12 +126,18 @@ def main(argv: list[str]) -> int:
     p_doh.add_argument("--hostname", required=True)
     p_doh.add_argument("--path", default="/dns-query")
 
+    p_doq = sub.add_parser("doq", parents=[common])
+    p_doq.add_argument("--addr", default="", help='optional ip[:port] override; empty = use DNS')
+    p_doq.add_argument("--hostname", required=True)
+
     args = parser.parse_args(argv)
     try:
         if args.proto == "dnscrypt":
             print(make_dnscrypt_stamp(args), end="")
         elif args.proto == "doh":
             print(make_doh_stamp(args), end="")
+        elif args.proto == "doq":
+            print(make_doq_stamp(args), end="")
         else:
             parser.error(f"unknown protocol {args.proto}")
             return 2

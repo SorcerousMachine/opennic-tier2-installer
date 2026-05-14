@@ -102,6 +102,39 @@ else
     fi
 fi
 
+# ---- DoQ --------------------------------------------------------------------
+# DoQ shares port 853 with DoT but uses UDP. kdig +quic is the standard probe
+# (knot-dnsutils 3.0+); fall back to a UDP listener check if kdig is missing.
+
+if command -v kdig >/dev/null 2>&1 && kdig +help 2>&1 | grep -q '\+\[no\]quic'; then
+    if [[ "${LE_STAGING:-false}" == "true" ]]; then
+        # Staging cert isn't browser-trusted; skip strict validation.
+        out="$(kdig +quic +tls-ca=/etc/ssl/certs/ca-certificates.crt \
+                    "@$RESOLVER_IPV4" example.com A +short 2>&1 \
+                | grep -E '^[0-9.]+$' | head -1 || true)"
+        if [[ -n "$out" ]]; then
+            _check_warn "DoQ (opportunistic - staging cert) -> $out"
+        else
+            _check_warn "DoQ check inconclusive (staging cert + handshake)"
+        fi
+    else
+        out="$(kdig +quic +tls-hostname="$RESOLVER_HOSTNAME" \
+                    "@$RESOLVER_IPV4" example.com A +short 2>&1 \
+                | grep -E '^[0-9.]+$' | head -1 || true)"
+        if [[ -n "$out" ]]; then
+            _check_ok "DoQ $RESOLVER_HOSTNAME:853 (validated) -> $out"
+        else
+            _check_fail "DoQ query failed (handshake or cert validation)"
+        fi
+    fi
+else
+    if ss -ulnp 2>/dev/null | awk '{print $5}' | grep -q ":853$"; then
+        _check_warn "DoQ UDP :853 listener present (install knot-dnsutils 3.0+ for full DoQ verification)"
+    else
+        _check_fail "DoQ UDP :853 not listening"
+    fi
+fi
+
 # ---- DoH --------------------------------------------------------------------
 
 # RFC 8484 GET form. base64url-encoded DNS query for example.com A.

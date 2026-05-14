@@ -33,6 +33,10 @@ addTLSLocal('${RESOLVER_IPV4}:853',
             '/etc/dnsdist/tls/fullchain.pem',
             '/etc/dnsdist/tls/privkey.pem')
 ${IPV6_DOT}
+-- DoQ (DNS over QUIC, RFC 9250) on UDP 853, same cert as DoT. Shares port
+-- 853 with DoT because UDP and TCP sockets are distinct. quiche-backed.
+${IPV4_DOQ}
+${IPV6_DOQ}
 -- DNSCrypt (UDP + TCP). Provider name and resolver-cert files are generated
 -- once during install and rotated by scripts/print-stamps.sh-aware tools.
 addDNSCryptBind('${RESOLVER_IPV4}:8443',

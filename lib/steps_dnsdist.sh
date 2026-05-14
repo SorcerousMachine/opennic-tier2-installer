@@ -1,21 +1,58 @@
 # shellcheck shell=bash
-# dnsdist step: DNSCrypt key+cert generation, dnsdist.conf rendering, start.
+# dnsdist step: source build, custom systemd unit, DNSCrypt keys, config render,
+# and migration off the Debian dnsdist package (if present).
 
 : "${REPO_ROOT:?REPO_ROOT must be set before sourcing lib/steps_dnsdist.sh}"
 # shellcheck source=/dev/null
 source "$REPO_ROOT/lib/helpers.sh"
+# shellcheck source=/dev/null
+source "$REPO_ROOT/lib/dnsdist_build.sh"
 
+DNSDIST_BIN=/opt/dnsdist/bin/dnsdist
 DNSDIST_CRYPT_DIR=/etc/dnsdist/dnscrypt
 DNSDIST_TLS_DIR=/etc/dnsdist/tls
 DNSDIST_CONSOLE_KEY=/etc/dnsdist/console.key
+DNSDIST_SYSTEMD_UNIT=/etc/systemd/system/dnsdist.service
 
-step_dnsdist_install_package() {
-    if dpkg -s dnsdist >/dev/null 2>&1; then
-        log_dim "dnsdist already installed"
-    else
-        log_info "installing dnsdist"
-        DEBIAN_FRONTEND=noninteractive run_quiet apt-get install -y -q dnsdist
+# The Debian dnsdist package creates _dnsdist via adduser --system. We rely on
+# the package's first install to provision it; if the operator never had the
+# package (or already purged), create it ourselves before our systemd unit
+# starts. Idempotent: getent first.
+step_dnsdist_ensure_user() {
+    if getent passwd _dnsdist >/dev/null 2>&1; then
+        log_dim "_dnsdist user already exists"
+        return 0
     fi
+    log_info "creating _dnsdist system user"
+    adduser --system --group --no-create-home --home /nonexistent \
+            --quiet --force-badname _dnsdist
+}
+
+# Install our custom systemd unit to /etc/systemd/system, which takes
+# precedence over anything the Debian dnsdist package might have left at
+# /usr/lib/systemd/system. daemon-reload happens here, restart is deferred to
+# step_dnsdist_start so config rendering can come between.
+step_dnsdist_install_systemd_unit() {
+    log_info "installing /etc/systemd/system/dnsdist.service (points at $DNSDIST_BIN)"
+    install -m 0644 -o root -g root \
+        "$REPO_ROOT/configs/systemd/dnsdist.service.template" \
+        "$DNSDIST_SYSTEMD_UNIT"
+    systemctl daemon-reload
+}
+
+# Remove the Debian dnsdist package if present. We use `apt-get remove`
+# (not purge) so /etc/dnsdist/* and the _dnsdist user are preserved. dpkg's
+# pre/post-remove scripts stop the service first; our /etc/systemd/system
+# unit and /opt/dnsdist binary stay in place. step_dnsdist_start then brings
+# the service back up from the source binary.
+step_dnsdist_remove_apt_package() {
+    if ! dpkg-query -W -f='${Status}\n' dnsdist 2>/dev/null \
+            | grep -q '^install ok installed$'; then
+        log_dim "Debian dnsdist package not installed; nothing to remove"
+        return 0
+    fi
+    log_info "removing Debian dnsdist package (replaced by source build at $DNSDIST_BIN)"
+    DEBIAN_FRONTEND=noninteractive run_quiet apt-get remove -y -q dnsdist
 }
 
 # Generate DNSCrypt provider keypair + resolver cert via a one-shot dnsdist
@@ -42,7 +79,7 @@ generateDNSCryptCertificate(
     1, os.time(), os.time() + 86400 * 365)
 os.exit(0)
 EOF
-    if ! dnsdist -u root -g root -C "$lua" --supervised >/dev/null 2>>"$LOG_FILE"; then
+    if ! "$DNSDIST_BIN" -u root -g root -C "$lua" --supervised >/dev/null 2>>"$LOG_FILE"; then
         log_error "dnsdist key generation failed; see $LOG_FILE"
         rm -f "$lua"
         return 1
@@ -93,22 +130,29 @@ setKey('${console_key}')
 EOF
     )"
 
+    # IPv4 DoQ listener (UDP 853, same cert as DoT).
+    local ipv4_doq
+    ipv4_doq=$'addDOQLocal(\''"$RESOLVER_IPV4"$':853\','$'\n'$'            \'/etc/dnsdist/tls/fullchain.pem\','$'\n'$'            \'/etc/dnsdist/tls/privkey.pem\')'
+
     # IPv6 listener lines, only if RESOLVER_IPV6 is set.
-    local ipv6_do53="" ipv6_dot="" ipv6_dnscrypt=""
+    local ipv6_do53="" ipv6_dot="" ipv6_doq="" ipv6_dnscrypt=""
     if [[ -n "${RESOLVER_IPV6:-}" ]]; then
         ipv6_do53=$'addLocal(\'['"$RESOLVER_IPV6"$']:53\')'
         ipv6_dot=$'addTLSLocal(\'['"$RESOLVER_IPV6"$']:853\','$'\n'$'            \'/etc/dnsdist/tls/fullchain.pem\','$'\n'$'            \'/etc/dnsdist/tls/privkey.pem\')'
+        ipv6_doq=$'addDOQLocal(\'['"$RESOLVER_IPV6"$']:853\','$'\n'$'            \'/etc/dnsdist/tls/fullchain.pem\','$'\n'$'            \'/etc/dnsdist/tls/privkey.pem\')'
         ipv6_dnscrypt=$'addDNSCryptBind(\'['"$RESOLVER_IPV6"$']:8443\','$'\n'$'                \''"$DNSCRYPT_PROVIDER_NAME"$'\','$'\n'$'                \'/etc/dnsdist/dnscrypt/cert.cert\','$'\n'$'                \'/etc/dnsdist/dnscrypt/cert.key\')'
     fi
 
     local rendered; rendered="$(mktemp)"
     RESOLVER_IPV4="$RESOLVER_IPV4" \
     DNSCRYPT_PROVIDER_NAME="$DNSCRYPT_PROVIDER_NAME" \
+    IPV4_DOQ="$ipv4_doq" \
     IPV6_DO53="$ipv6_do53" \
     IPV6_DOT="$ipv6_dot" \
+    IPV6_DOQ="$ipv6_doq" \
     IPV6_DNSCRYPT="$ipv6_dnscrypt" \
     CONSOLE_BLOCK="$console_block" \
-        envsubst '${RESOLVER_IPV4} ${DNSCRYPT_PROVIDER_NAME} ${IPV6_DO53} ${IPV6_DOT} ${IPV6_DNSCRYPT} ${CONSOLE_BLOCK}' \
+        envsubst '${RESOLVER_IPV4} ${DNSCRYPT_PROVIDER_NAME} ${IPV4_DOQ} ${IPV6_DO53} ${IPV6_DOT} ${IPV6_DOQ} ${IPV6_DNSCRYPT} ${CONSOLE_BLOCK}' \
         < "$REPO_ROOT/configs/dnsdist/dnsdist.conf.template" \
         > "$rendered"
 
@@ -116,7 +160,7 @@ EOF
     rm -f "$rendered"
 
     log_info "validating dnsdist config"
-    if ! run_quiet dnsdist --check-config -C /etc/dnsdist/dnsdist.conf; then
+    if ! run_quiet "$DNSDIST_BIN" --check-config -C /etc/dnsdist/dnsdist.conf; then
         log_error "dnsdist config check failed"
         return 1
     fi
@@ -197,10 +241,13 @@ step_dnsdist_verify() {
 }
 
 step_dnsdist() {
-    step_dnsdist_install_package
+    step_dnsdist_build_from_source   || return 1
+    step_dnsdist_ensure_user         || return 1
+    step_dnsdist_install_systemd_unit
     step_dnsdist_generate_dnscrypt_keys
     step_dnsdist_generate_console_key
-    step_dnsdist_render_config
-    step_dnsdist_start
+    step_dnsdist_render_config       || return 1
+    step_dnsdist_remove_apt_package
+    step_dnsdist_start               || return 1
     step_dnsdist_verify
 }

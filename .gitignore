@@ -5,6 +5,10 @@ install.conf
 linux-x86_64/
 linux-amd64/
 
+# Python bytecode caches (lib/make_stamp.py is invoked directly; no install step)
+__pycache__/
+*.pyc
+
 # Editor / OS detritus
 *.swp
 *.swo

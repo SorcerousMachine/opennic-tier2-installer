@@ -177,6 +177,11 @@ code, .stamp {
                     <td>DNS over HTTPS (RFC 8484). Encrypted; works through restrictive firewalls.</td>
                 </tr>
                 <tr>
+                    <td class="protocol">DoQ</td>
+                    <td class="endpoint">${RESOLVER_HOSTNAME}:853 (UDP)</td>
+                    <td>DNS over QUIC (RFC 9250). Encrypted; lower handshake latency than DoT.</td>
+                </tr>
+                <tr>
                     <td class="protocol">DNSCrypt</td>
                     <td class="endpoint">${RESOLVER_IPV4}:8443${ENDPOINT_IPV6_DNSCRYPT}</td>
                     <td>DNSCrypt v2 over UDP and TCP. See server stamps below.</td>
@@ -190,6 +195,8 @@ code, .stamp {
 ${DNSCRYPT_STAMP_IPV6_BLOCK}
         <h3 style="font-size:1rem; font-weight:600; margin:1rem 0 0.4rem;">DoH server stamp</h3>
         <span class="stamp">${DOH_STAMP}</span>
+        <h3 style="font-size:1rem; font-weight:600; margin:1rem 0 0.4rem;">DoQ server stamp</h3>
+        <span class="stamp">${DOQ_STAMP}</span>
     </section>
 
     <section>

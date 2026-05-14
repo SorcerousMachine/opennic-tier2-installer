@@ -1,14 +1,15 @@
 # opennic-tier2-installer
 
-A reusable bash installer that turns a fresh **Debian 13 (trixie)** host into a fully-functional **OpenNIC Tier-2 DNS resolver** speaking **Do53**, **DoT**, **DoH**, and **DNSCrypt**, with **DNSSEC validation against both IANA and OpenNIC root keys**, and a strict **no-logs** posture throughout.
+A reusable bash installer that turns a fresh **Debian 13 (trixie)** host into a fully-functional **OpenNIC Tier-2 DNS resolver** speaking **Do53**, **DoT**, **DoH**, **DoQ**, and **DNSCrypt**, with **DNSSEC validation against both IANA and OpenNIC root keys**, and a strict **no-logs** posture throughout.
 
 ```
                        ┌──────────────────────────────────────┐
    Public users        │         Public IPv4/IPv6             │
    ──────────────►     │                                      │
    :53  Do53 UDP/TCP   │  ┌───────────┐                       │
-   :853 DoT            │  │  dnsdist  │ ──► 127.0.0.1:5353    │
-   :8443 DNSCrypt      │  └───────────┘     (BIND9)           │
+   :853 DoT (TCP)      │  │  dnsdist  │ ──► 127.0.0.1:5353    │
+   :853 DoQ (UDP)      │  └───────────┘     (BIND9)           │
+   :8443 DNSCrypt      │                                      │
    :443 DoH+HTTPS      │                                      │
                        │  ┌───────────┐                       │
                        │  │   nginx   │ ──► 127.0.0.1:5443    │
@@ -19,14 +20,14 @@ A reusable bash installer that turns a fresh **Debian 13 (trixie)** host into a 
                        └──────────────────────────────────────┘
 ```
 
-A typical fresh-host install completes in **under a minute** and is fully **idempotent** — re-run `install.sh` any time, every step is skip-safe.
+A typical fresh-host install completes in **~10–15 minutes** (the bulk is the source build of dnsdist + quiche; see [Configuration](#configuration-reference) for version pinning) and is fully **idempotent** — re-run `install.sh` any time, every step is skip-safe.
 
 ---
 
 ## What you get
 
 - **BIND9** as the recursive resolver. ICANN names recurse normally; OpenNIC TLDs and the OpenNIC root are slaved from official Tier-1 nameservers (the OpenNIC-recommended Tier-2 method). DNSSEC validation against IANA's auto-managed root anchor *and* the live OpenNIC root KSK.
-- **dnsdist** terminating Do53, DoT, and DNSCrypt directly on the public IP. Per-IP rate limiting, ANY-query refusal, non-recursive query refusal.
+- **dnsdist** terminating Do53, DoT, DoQ, and DNSCrypt directly on the public IP. Per-IP rate limiting, ANY-query refusal, non-recursive query refusal. Built from upstream `PowerDNS/pdns` source against `cloudflare/quiche` so DoQ + DoH3 work out of the box without third-party apt repos. Build deps are auto-installed, marked auto, and `apt-get autoremove --purge`'d after the binary is in place; `/opt/dnsdist` is the only persistent footprint.
 - **nginx** owning :443 — TLS-terminates the operator info page on `/` and reverse-proxies DoH on `/dns-query` to dnsdist on `127.0.0.1:5443`. `trustForwardedForHeader=true` keeps per-IP rate limits accurate.
 - **Let's Encrypt** certificate via certbot (HTTP-01 standalone for issuance, webroot for renewals; DNS-01 with Cloudflare also supported). Renewal deploy hook re-deploys cert material to nginx and dnsdist automatically.
 - **unattended-upgrades** for security patches with a configurable reboot policy.
@@ -44,6 +45,7 @@ A typical fresh-host install completes in **under a minute** and is fully **idem
   - `:80/tcp` — Let's Encrypt HTTP-01 challenge (initial issuance and renewals when using the default `http-01` mode)
   - `:443/tcp` — nginx (HTTPS info page + DoH)
   - `:853/tcp` — DoT
+  - `:853/udp` — DoQ (RFC 9250)
   - `:8443/udp+tcp` — DNSCrypt
 - An **A record** (and optionally **AAAA**) pointing the resolver hostname at the host *before* you run the installer. Certbot will refuse to issue otherwise.
 - **Root** on the host (`sudo bash install.sh`).
@@ -118,6 +120,8 @@ All operator-tunable values live in **`install.conf`** (gitignored). Copy `insta
 | `OPERATOR_HOMEPAGE_URL`   | `https://<RESOLVER_HOSTNAME>/`          | Linked from the info page footer. |
 | `AUTO_REBOOT_TIME`        | `now`                                   | Reboot policy for unattended-upgrades. `now`, `HH:MM`, or empty (disable). |
 | `SLAVE_OPENNIC_ROOT`      | `false`                                 | `true` slaves the OpenNIC root in addition to the 16 TLDs. See below. |
+| `DNSDIST_VERSION`         | *(empty = latest stable)*               | Optional pin for the source-built dnsdist tag (e.g. `"2.0.5"`). Empty resolves the latest `dnsdist-2.0.x` tag on PowerDNS/pdns. |
+| `QUICHE_VERSION`          | *(empty = latest stable)*               | Optional pin for the cloudflare/quiche tag (e.g. `"0.28.0"`). Empty resolves the latest `0.x.y` tag. |
 
 ### The DNSSEC-vs-altroot-fidelity tradeoff (`SLAVE_OPENNIC_ROOT`)
 
