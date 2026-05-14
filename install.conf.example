@@ -81,3 +81,12 @@ AUTO_REBOOT_TIME="now"
 #                       no AD), which breaks dnscrypt-proxy's DNSSEC check.
 # Only set "true" if you specifically want the alt-root-replica property.
 SLAVE_OPENNIC_ROOT="false"
+
+# Optional version pins for the source-built dnsdist + quiche. Empty means
+# "latest stable" at install time, resolved by `git ls-remote` against the
+# upstream repos (PowerDNS/pdns and cloudflare/quiche). Pin to lock for
+# reproducibility; leave empty to track upstream stable across re-runs.
+#   DNSDIST_VERSION="2.0.5"
+#   QUICHE_VERSION="0.28.0"
+DNSDIST_VERSION=""
+QUICHE_VERSION=""

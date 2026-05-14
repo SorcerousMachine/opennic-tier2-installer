@@ -233,6 +233,8 @@ apply_config_defaults() {
     : "${OPERATOR_REGION:=}"
     : "${AUTO_REBOOT_TIME:=now}"
     : "${SLAVE_OPENNIC_ROOT:=false}"
+    : "${DNSDIST_VERSION:=}"
+    : "${QUICHE_VERSION:=}"
 
     if [[ -z "${DNSCRYPT_PROVIDER_NAME:-}" ]]; then
         DNSCRYPT_PROVIDER_NAME="2.dnscrypt-cert.${RESOLVER_HOSTNAME}"
@@ -246,6 +248,7 @@ apply_config_defaults() {
     export OPERATOR_REGION OPERATOR_HOMEPAGE_URL
     export ACME_CHALLENGE DNS_PROVIDER DNS_PROVIDER_API_TOKEN LE_STAGING
     export DNSCRYPT_PROVIDER_NAME AUTO_REBOOT_TIME SLAVE_OPENNIC_ROOT
+    export DNSDIST_VERSION QUICHE_VERSION
 }
 
 # ---------- install.conf change detection (idempotent re-runs) ----------------

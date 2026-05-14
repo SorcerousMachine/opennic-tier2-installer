@@ -1,0 +1,57 @@
+[Unit]
+Description=dnsdist (OpenNIC Tier-2 frontend, source-built with DoQ/DoH3)
+Documentation=man:dnsdist(1) https://dnsdist.org
+Wants=network-online.target
+After=network-online.target time-sync.target named.service
+
+[Service]
+Type=notify
+User=_dnsdist
+Group=_dnsdist
+SyslogIdentifier=dnsdist
+
+ExecStartPre=/opt/dnsdist/bin/dnsdist --check-config
+ExecStart=/opt/dnsdist/bin/dnsdist --supervised --disable-syslog
+
+Restart=on-failure
+RestartSec=2
+TimeoutStopSec=5
+StartLimitInterval=0
+
+TasksMax=8192
+LimitNOFILE=1000000
+
+# Bind to :53, :853 (DoT TCP + DoQ UDP), and :8443 (DNSCrypt). Run as the
+# unprivileged _dnsdist user otherwise.
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+# Hardening (matches the upstream Debian unit, less the apparmor/eBPF caveats
+# we don't use).
+LockPersonality=true
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=full
+RestrictAddressFamilies=AF_INET AF_INET6 AF_NETLINK AF_UNIX
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+SystemCallArchitectures=native
+SystemCallFilter=~ @clock @debug @module @mount @raw-io @reboot @swap @cpu-emulation @obsolete
+ProtectProc=invisible
+PrivateIPC=true
+RemoveIPC=true
+DevicePolicy=closed
+# MemoryDenyWriteExecute conflicts with LuaJIT.
+MemoryDenyWriteExecute=false
+
+[Install]
+WantedBy=multi-user.target
